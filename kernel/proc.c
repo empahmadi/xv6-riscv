@@ -681,3 +681,9 @@ procdump(void)
     printf("\n");
   }
 }
+
+int
+hello(void){
+    printf("hello from xv6-riscv\n");
+    return 0;
+}
