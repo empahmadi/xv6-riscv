@@ -94,3 +94,10 @@ int
 sys_hello(void){
     return hello();
 }
+
+int
+sys_getProcTick(void){
+    int pid;
+    argint(0, &pid);
+    return getProcTick(pid);
+}

@@ -124,6 +124,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->startTick = ticks;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -321,6 +322,7 @@ fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
+  np->startTick = ticks;
 
   return pid;
 }
@@ -686,4 +688,21 @@ int
 hello(void){
     printf("hello from xv6-riscv\n");
     return 0;
+}
+
+int
+getProcTick(int pid){
+    struct proc *p;
+
+    for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->pid == pid){
+            printf("ticks = %d, startTick = %d\n", ticks, p->startTick);
+            printf("ticks = %d\n", ticks - p->startTick);
+            release(&p->lock);
+            return 0;
+        }
+        release(&p->lock);
+    }
+    return -1;
 }
