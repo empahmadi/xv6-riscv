@@ -1,3 +1,4 @@
+#include "../include/structs.h"
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"
@@ -322,7 +323,6 @@ fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
-  np->startTick = ticks;
 
   return pid;
 }
@@ -684,6 +684,26 @@ procdump(void)
   }
 }
 
+// user defined functions
+// auxiliary functions:
+
+uint64
+active_processes(){
+    uint64 procs=0;
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++) {
+        acquire(&p->lock);
+        if(p->state != USED) {
+            procs++;
+        }
+        release(&p->lock);
+    }
+    return procs;
+}
+
+
+// system calls:
+
 int
 hello(void){
     printf("hello from xv6-riscv\n");
@@ -705,4 +725,19 @@ getProcTick(int pid){
         release(&p->lock);
     }
     return -1;
+}
+
+
+
+int
+sysinfo(uint64 addr){
+    struct sys_info info;
+    info.uptime = ticks;
+    info.totalram = 128*1024*1024;
+    info.freeram = free_memory();
+    info.procs = active_processes();
+    if(copyout(myproc()->pagetable,(uint64)addr,(char*)&info,sizeof (struct sys_info))<0){
+        return -1;
+    }
+    return 0;
 }

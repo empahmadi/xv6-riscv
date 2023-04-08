@@ -101,3 +101,13 @@ sys_getProcTick(void){
     argint(0, &pid);
     return getProcTick(pid);
 }
+
+
+
+int
+sys_sysinfo(void) {
+    uint64 p;
+    argaddr(0, &p);
+    return sysinfo(p);
+}
+
