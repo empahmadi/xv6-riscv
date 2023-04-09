@@ -9,7 +9,8 @@ int main(void){
     printf("This is the start of test for getProcTick system call !!!\n");
     int x = 998 + 809;
     printf("this is the result: %d\n", x);
-    getProcTick(getpid());
+    int ticks = getProcTick(getpid());
+    printf("ticks = %d\n", ticks);
     printf("This is the end of test for getProcTick system call !!!\n");
     exit(0);
 }
