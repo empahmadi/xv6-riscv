@@ -736,7 +736,7 @@ getProcTick(int pid){
 int
 sysinfo(uint64 addr){
     struct sys_info info;
-    info.uptime = ticks;
+    info.uptime = ticks * 0.01;
     info.totalram = 128*1024*1024;
     info.freeram = free_memory();
     info.procs = active_processes();
