@@ -111,3 +111,10 @@ sys_sysinfo(void) {
     return sysinfo(p);
 }
 
+int
+sys_switch_scheduler(void){
+    int number;
+    argint(0, &number);
+    return switch_scheduler(number);
+}
+

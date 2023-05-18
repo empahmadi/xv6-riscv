@@ -15,4 +15,7 @@ struct sys_info {
 };
 
 
+enum scheduler_algorithm_mode {DEFAULT, FCFS};
+
+
 #endif //XV6_RISCV_STRUCTS_H

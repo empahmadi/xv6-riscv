@@ -23,3 +23,4 @@
 #define SYS_hello  22
 #define SYS_getProcTick  23
 #define SYS_sysinfo   24
+#define SYS_switch_scheduler 25

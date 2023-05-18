@@ -9,6 +9,7 @@ struct sleeplock;
 struct stat;
 struct superblock;
 struct sys_info;
+enum scheduler_algorithm_mode;
 
 // bio.c
 void            binit(void);
@@ -111,6 +112,7 @@ void            procdump(void);
 int             hello(void);
 int             getProcTick(int);
 int             sysinfo(uint64);
+int             switch_scheduler(int algorithm);
 
 // swtch.S
 void            swtch(struct context*, struct context*);

@@ -27,6 +27,11 @@ extern char trampoline[]; // trampoline.S
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
 
+// a variable for stating the scheduling
+// algorithm that is using by this OS.
+// this could be either DEFAULT or FCFS.
+enum scheduler_algorithm_mode current_scheduler_algorithm;
+
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
 // guard page.
@@ -234,6 +239,7 @@ uchar initcode[] = {
 void
 userinit(void)
 {
+  current_scheduler_algorithm = FCFS;
   struct proc *p;
 
   p = allocproc();
@@ -447,33 +453,62 @@ wait(uint64 addr)
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
 void
-scheduler(void)
-{
-  struct proc *p;
-  struct cpu *c = mycpu();
-  
-  c->proc = 0;
-  for(;;){
-    // Avoid deadlock by ensuring that devices can interrupt.
-    intr_on();
+scheduler(void) {
+    struct proc *p;
+    struct cpu *c = mycpu();
 
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
+    c->proc = 0;
+    for (;;) {
+        // Avoid deadlock by ensuring that devices can interrupt.
+        intr_on();
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
-      release(&p->lock);
+        for (p = proc; p < &proc[NPROC]; p++) {
+            if (current_scheduler_algorithm == DEFAULT) {
+                acquire(&p->lock);
+                if (p->state != RUNNABLE) {
+                    release(&p->lock);
+                    continue;
+                }
+                release(&p->lock);
+            } else if (current_scheduler_algorithm == FCFS) {
+                struct proc *minP = 0;
+                acquire(&p->lock);
+                if (p->state != RUNNABLE) {
+                    release(&p->lock);
+                    continue;
+                }
+                // ignore init and sh processes from FCFS
+                if (p->pid > 1) {
+                    if (minP != 0) {
+                        // here I find the process with the lowest creation time (the first one that was created)
+                        if (p->startTick < minP->startTick)
+                            minP = p;
+                    } else
+                        minP = p;
+                }
+
+                if (minP != 0 && minP->state == RUNNABLE)
+                    p = minP;
+                release(&p->lock);
+            }
+            // end of scheduler algorithms.
+            acquire(&p->lock);
+            if (p != 0 && p->state == RUNNABLE) {
+                // Switch to chosen process.  It is the process's job
+                // to release its lock and then reacquire it
+                // before jumping back to us.
+                p->state = RUNNING;
+                c->proc = p;
+                swtch(&c->context, &p->context);
+
+                // Process is done running for now.
+                // It should have changed its p->state before coming back.
+                c->proc = 0;
+                printf("schedule occurred by algorithm #%d\n", current_scheduler_algorithm);
+            }
+            release(&p->lock);
+        }
     }
-  }
 }
 
 // Switch to scheduler.  Must hold only p->lock
@@ -744,4 +779,15 @@ sysinfo(uint64 addr){
         return -1;
     }
     return 0;
+}
+
+
+
+int
+switch_scheduler(int algorithm){
+    if (0 <= algorithm && algorithm <= 1) {
+        current_scheduler_algorithm = algorithm;
+        return 0;
+    }else
+        return -1;
 }
