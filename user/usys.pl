@@ -36,7 +36,3 @@ entry("getpid");
 entry("sbrk");
 entry("sleep");
 entry("uptime");
-entry("hello");
-entry("getProcTick");
-entry("sysinfo");
-entry("switch_scheduler");

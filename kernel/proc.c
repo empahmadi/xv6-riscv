@@ -1,4 +1,3 @@
-#include "../include/structs.h"
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"
@@ -26,11 +25,6 @@ extern char trampoline[]; // trampoline.S
 // memory model when using p->parent.
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
-
-// a variable for stating the scheduling
-// algorithm that is using by this OS.
-// this could be either DEFAULT or FCFS.
-enum scheduler_algorithm_mode current_scheduler_algorithm;
 
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
@@ -130,7 +124,6 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-  p->startTick = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -239,7 +232,6 @@ uchar initcode[] = {
 void
 userinit(void)
 {
-  current_scheduler_algorithm = FCFS;
   struct proc *p;
 
   p = allocproc();
@@ -329,9 +321,6 @@ fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
-  acquire(&tickslock);
-  np->startTick = ticks;
-  release(&tickslock);
 
   return pid;
 }
@@ -453,62 +442,33 @@ wait(uint64 addr)
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
 void
-scheduler(void) {
-    struct proc *p;
-    struct cpu *c = mycpu();
+scheduler(void)
+{
+  struct proc *p;
+  struct cpu *c = mycpu();
+  
+  c->proc = 0;
+  for(;;){
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
 
-    c->proc = 0;
-    for (;;) {
-        // Avoid deadlock by ensuring that devices can interrupt.
-        intr_on();
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        c->proc = p;
+        swtch(&c->context, &p->context);
 
-        for (p = proc; p < &proc[NPROC]; p++) {
-            if (current_scheduler_algorithm == DEFAULT) {
-                acquire(&p->lock);
-                if (p->state != RUNNABLE) {
-                    release(&p->lock);
-                    continue;
-                }
-                release(&p->lock);
-            } else if (current_scheduler_algorithm == FCFS) {
-                struct proc *minP = 0;
-                acquire(&p->lock);
-                if (p->state != RUNNABLE) {
-                    release(&p->lock);
-                    continue;
-                }
-                // ignore init and sh processes from FCFS
-                if (p->pid > 1) {
-                    if (minP != 0) {
-                        // here I find the process with the lowest creation time (the first one that was created)
-                        if (p->startTick < minP->startTick)
-                            minP = p;
-                    } else
-                        minP = p;
-                }
-
-                if (minP != 0 && minP->state == RUNNABLE)
-                    p = minP;
-                release(&p->lock);
-            }
-            // end of scheduler algorithms.
-            acquire(&p->lock);
-            if (p != 0 && p->state == RUNNABLE) {
-                // Switch to chosen process.  It is the process's job
-                // to release its lock and then reacquire it
-                // before jumping back to us.
-                p->state = RUNNING;
-                c->proc = p;
-                swtch(&c->context, &p->context);
-
-                // Process is done running for now.
-                // It should have changed its p->state before coming back.
-                c->proc = 0;
-                printf("schedule occurred by algorithm #%d\n", current_scheduler_algorithm);
-            }
-            release(&p->lock);
-        }
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&p->lock);
     }
+  }
 }
 
 // Switch to scheduler.  Must hold only p->lock
@@ -720,74 +680,4 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
-}
-
-// user defined functions
-// auxiliary functions:
-
-uint64
-active_processes(){
-    uint64 procs=0;
-    struct proc *p;
-    for(p = proc; p < &proc[NPROC]; p++) {
-        acquire(&p->lock);
-        if(p->state != USED) {
-            procs++;
-        }
-        release(&p->lock);
-    }
-    return procs;
-}
-
-
-// system calls:
-
-int
-hello(void){
-    printf("hello from xv6-riscv\n");
-    return 0;
-}
-
-int
-getProcTick(int pid){
-    struct proc *p;
-
-    for(p = proc; p < &proc[NPROC]; p++){
-        acquire(&p->lock);
-        if(p->pid == pid){
-            acquire(&tickslock);
-            int result = ticks - p->startTick;
-            release(&tickslock);
-            release(&p->lock);
-            return result;
-        }
-        release(&p->lock);
-    }
-    return -1;
-}
-
-
-
-int
-sysinfo(uint64 addr){
-    struct sys_info info;
-    info.uptime = ticks * 0.01;
-    info.totalram = 128*1024*1024;
-    info.freeram = free_memory();
-    info.procs = active_processes();
-    if(copyout(myproc()->pagetable,(uint64)addr,(char*)&info,sizeof (struct sys_info))<0){
-        return -1;
-    }
-    return 0;
-}
-
-
-
-int
-switch_scheduler(int algorithm){
-    if (0 <= algorithm && algorithm <= 1) {
-        current_scheduler_algorithm = algorithm;
-        return 0;
-    }else
-        return -1;
 }
