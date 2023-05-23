@@ -681,3 +681,41 @@ procdump(void)
     printf("\n");
   }
 }
+
+uint
+getctime(int pid){
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      return p->ctime;
+    }
+  }
+  release(&ptable.lock);
+  return 0;
+}
+int
+getttime(int pid){
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      return p->ttime;
+    }
+  }
+  release(&ptable.lock);
+  return 0;
+}
+
+int
+getrutime(int pid){
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      return p->rutime;
+    }
+  }
+  release(&ptable.lock);
+  return 0;
+}
