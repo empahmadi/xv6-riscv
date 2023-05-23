@@ -719,3 +719,58 @@ getrutime(int pid){
   release(&ptable.lock);
   return 0;
 }
+
+void updateStatus() {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    switch(p->state) {
+      case RUNNABLE:
+        p->retime++;
+        break;
+      case SLEEPING:
+        p->stime++;
+        break;
+      case RUNNING:
+        p->rutime++;
+        break;
+      default:
+        ;
+    }
+  }
+  release(&ptable.lock);
+}
+
+int
+getProcStatus(int type, int pid) {
+    struct proc *proc = myproc();
+    if (pid != -1) {
+        acquire(&ptable.lock);
+        struct proc *p;
+        for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+            if (p->pid == pid) {
+                proc = p;
+                break;
+            }
+        }
+        release(&ptable.lock);
+    }
+    switch (type) {
+        //ctime
+        case 1:
+            return proc->ctime;
+        //ttime
+        case 2:
+            return proc->ttime;
+        //rutime
+        case 3:
+            return proc->rutime;
+        //retime
+        case 4:
+            return proc->retime;
+        //stime
+        case 5:
+            return proc->stime;
+    }
+    return 0;
+}
