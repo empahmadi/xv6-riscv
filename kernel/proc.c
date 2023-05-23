@@ -1,3 +1,4 @@
+#include "../include/structs.h"
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"
@@ -25,6 +26,11 @@ extern char trampoline[]; // trampoline.S
 // memory model when using p->parent.
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
+
+// a variable for stating the scheduling
+// algorithm that is using by this OS.
+// this could be either DEFAULT or FCFS.
+enum scheduler_algorithm_mode current_scheduler_algorithm;
 
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
@@ -124,6 +130,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->startTick = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -232,6 +239,7 @@ uchar initcode[] = {
 void
 userinit(void)
 {
+  current_scheduler_algorithm = DEFAULT;
   struct proc *p;
 
   p = allocproc();
@@ -321,6 +329,9 @@ fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
+  acquire(&tickslock);
+  np->startTick = ticks;
+  release(&tickslock);
 
   return pid;
 }
@@ -442,33 +453,58 @@ wait(uint64 addr)
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
 void
-scheduler(void)
-{
-  struct proc *p;
-  struct cpu *c = mycpu();
-  
-  c->proc = 0;
-  for(;;){
-    // Avoid deadlock by ensuring that devices can interrupt.
-    intr_on();
+scheduler(void) {
+    struct proc *p;
+    struct cpu *c = mycpu();
 
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
+    c->proc = 0;
+    for (;;) {
+        // Avoid deadlock by ensuring that devices can interrupt.
+        intr_on();
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
-      release(&p->lock);
+        for (p = proc; p < &proc[NPROC]; p++) {
+            if (current_scheduler_algorithm == DEFAULT) {
+                acquire(&p->lock);
+                if (p->state != RUNNABLE) {
+                    release(&p->lock);
+                    continue;
+                }
+                release(&p->lock);
+            } else if (current_scheduler_algorithm == FCFS) {
+                acquire(&p->lock);
+                if (p->state != RUNNABLE) {
+                    release(&p->lock);
+                    continue;
+                }
+                release(&p->lock);
+                struct proc *eldest_process = p;
+                for (p = proc; p < &proc[NPROC]; p++) {
+                    if (p->pid > 2 && eldest_process->startTick > p->startTick) {
+                        eldest_process = p;
+                    }
+                }
+                p = eldest_process;
+            }
+
+            // end of scheduler algorithms.
+            acquire(&p->lock);
+            if (p->state == RUNNABLE) {
+                // Switch to chosen process.  It is the process's job
+                // to release its lock and then reacquire it
+                // before jumping back to us.
+                p->state = RUNNING;
+                c->proc = p;
+                swtch(&c->context, &p->context);
+
+                // Process is done running for now.
+                // It should have changed its p->state before coming back.
+                c->proc = 0;
+                printf("schedule occurred by algorithm #%d\n", current_scheduler_algorithm);
+            }
+            release(&p->lock);
+        }
+
     }
-  }
 }
 
 // Switch to scheduler.  Must hold only p->lock
@@ -682,95 +718,72 @@ procdump(void)
   }
 }
 
-uint
-getctime(int pid){
-  struct proc *p;
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->pid == pid){
-      return p->ctime;
-    }
-  }
-  release(&ptable.lock);
-  return 0;
-}
-int
-getttime(int pid){
-  struct proc *p;
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->pid == pid){
-      return p->ttime;
-    }
-  }
-  release(&ptable.lock);
-  return 0;
-}
+// user defined functions
+// auxiliary functions:
 
-int
-getrutime(int pid){
-  struct proc *p;
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->pid == pid){
-      return p->rutime;
-    }
-  }
-  release(&ptable.lock);
-  return 0;
-}
-
-void updateStatus() {
-  struct proc *p;
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    switch(p->state) {
-      case RUNNABLE:
-        p->retime++;
-        break;
-      case SLEEPING:
-        p->stime++;
-        break;
-      case RUNNING:
-        p->rutime++;
-        break;
-      default:
-        ;
-    }
-  }
-  release(&ptable.lock);
-}
-
-int
-getProcStatus(int type, int pid) {
-    struct proc *proc = myproc();
-    if (pid != -1) {
-        acquire(&ptable.lock);
-        struct proc *p;
-        for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-            if (p->pid == pid) {
-                proc = p;
-                break;
-            }
+uint64
+active_processes(){
+    uint64 procs=0;
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++) {
+        acquire(&p->lock);
+        if(p->state != USED) {
+            procs++;
         }
-        release(&ptable.lock);
+        release(&p->lock);
     }
-    switch (type) {
-        //ctime
-        case 1:
-            return proc->ctime;
-        //ttime
-        case 2:
-            return proc->ttime;
-        //rutime
-        case 3:
-            return proc->rutime;
-        //retime
-        case 4:
-            return proc->retime;
-        //stime
-        case 5:
-            return proc->stime;
+    return procs;
+}
+
+
+// system calls:
+
+int
+hello(void){
+    printf("hello from xv6-riscv\n");
+    return 0;
+}
+
+int
+getProcTick(int pid){
+    struct proc *p;
+
+    for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->pid == pid){
+            acquire(&tickslock);
+            int result = ticks - p->startTick;
+            release(&tickslock);
+            release(&p->lock);
+            return result;
+        }
+        release(&p->lock);
+    }
+    return -1;
+}
+
+
+
+int
+sysinfo(uint64 addr){
+    struct sys_info info;
+    info.uptime = ticks * 0.01;
+    info.totalram = 128*1024*1024;
+    info.freeram = free_memory();
+    info.procs = active_processes();
+    if(copyout(myproc()->pagetable,(uint64)addr,(char*)&info,sizeof (struct sys_info))<0){
+        return -1;
     }
     return 0;
+}
+
+
+
+int
+switch_scheduler(int algorithm){
+    if (0 <= algorithm && algorithm <= 1) {
+        current_scheduler_algorithm = algorithm;
+        return 0;
+    }else
+        return -1;
 }

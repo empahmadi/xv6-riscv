@@ -1,4 +1,6 @@
 struct stat;
+struct sys_info;
+enum scheduler_algorithm_mode;
 
 // system calls
 int fork(void);
@@ -22,6 +24,10 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int hello(void);
+int getProcTick(int);
+int sysinfo(struct sys_info*);
+int switch_scheduler(int);
 
 // ulib.c
 int stat(const char*, struct stat*);
