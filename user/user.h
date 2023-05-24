@@ -28,6 +28,11 @@ int hello(void);
 int getProcTick(int);
 int sysinfo(struct sys_info*);
 int switch_scheduler(int);
+int get_termination_time(int);
+int get_running_time(int);
+int get_ready_time(int);
+int get_sleeping_time(int);
+int get_creation_time(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

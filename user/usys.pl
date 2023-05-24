@@ -40,3 +40,8 @@ entry("hello");
 entry("getProcTick");
 entry("sysinfo");
 entry("switch_scheduler");
+entry("get_termination_time");
+entry("get_running_time");
+entry("get_ready_time");
+entry("get_sleeping_time");
+entry("get_creation_time");

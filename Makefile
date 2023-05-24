@@ -135,6 +135,8 @@ UPROGS=\
 	$U/_helloTest\
 	$U/_getProcTickTest\
 	$U/_sysinfoTest\
+	$U/_test1\
+	$U/_test2\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

@@ -118,3 +118,33 @@ sys_switch_scheduler(void){
     return switch_scheduler(number);
 }
 
+int sys_get_termination_time(void){
+    int pid;
+    argint(0, &pid);
+    return get_termination_time(pid);
+}
+
+int sys_get_running_time(void){
+    int pid;
+    argint(0, &pid);
+    return get_running_time(pid);
+}
+
+int sys_get_ready_time(void){
+    int pid;
+    argint(0, &pid);
+    return get_ready_time(pid);
+}
+
+int sys_get_sleeping_time(void){
+    int pid;
+    argint(0, &pid);
+    return get_sleeping_time(pid);
+}
+
+int sys_get_creation_time(void){
+    int pid;
+    argint(0, &pid);
+    return get_creation_time(pid);
+}
+

@@ -113,6 +113,12 @@ int             hello(void);
 int             getProcTick(int);
 int             sysinfo(uint64);
 int             switch_scheduler(int algorithm);
+void            updateStatus();
+int             get_termination_time(int pid);
+int             get_running_time(int pid);
+int             get_ready_time(int pid);
+int             get_sleeping_time(int pid);
+int             get_creation_time(int pid);
 
 // swtch.S
 void            swtch(struct context*, struct context*);

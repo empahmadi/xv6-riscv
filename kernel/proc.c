@@ -131,6 +131,10 @@ found:
   p->pid = allocpid();
   p->state = USED;
   p->startTick = 0;
+  p->termination_time = 0;
+  p->running_time = 0;
+  p->ready_time = 0;
+  p->sleeping_time = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -331,6 +335,10 @@ fork(void)
   release(&np->lock);
   acquire(&tickslock);
   np->startTick = ticks;
+  np->termination_time = 0;
+  np->running_time = 0;
+  np->ready_time = 0;
+  np->sleeping_time = 0;
   release(&tickslock);
 
   return pid;
@@ -388,6 +396,9 @@ exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
+  acquire(&tickslock);
+  p->termination_time = ticks;
+  release(&tickslock);
 
   release(&wait_lock);
 
@@ -499,7 +510,6 @@ scheduler(void) {
                 // Process is done running for now.
                 // It should have changed its p->state before coming back.
                 c->proc = 0;
-                printf("schedule occurred by algorithm #%d\n", current_scheduler_algorithm);
             }
             release(&p->lock);
         }
@@ -787,3 +797,107 @@ switch_scheduler(int algorithm){
     }else
         return -1;
 }
+
+
+void
+updateStatus() {
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        switch(p->state) {
+            case RUNNABLE:
+                p->ready_time++;
+                break;
+            case SLEEPING:
+                p->sleeping_time++;
+                break;
+            case RUNNING:
+                p->running_time++;
+                break;
+            default:
+                ;
+        }
+        release(&p->lock);
+    }
+}
+
+
+int
+get_termination_time(int pid){
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->pid == pid){
+            int result = p->termination_time;
+            release(&p->lock);
+            return result;
+        }
+        release(&p->lock);
+    }
+    return -1;
+}
+
+
+int
+get_running_time(int pid){
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->pid == pid){
+            int result = p->running_time;
+            release(&p->lock);
+            return result;
+        }
+        release(&p->lock);
+    }
+    return -1;
+}
+
+
+int
+get_ready_time(int pid){
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->pid == pid){
+            int result = p->ready_time;
+            release(&p->lock);
+            return result;
+        }
+        release(&p->lock);
+    }
+    return -1;
+}
+
+
+int
+get_sleeping_time(int pid){
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->pid == pid){
+            int result = p->sleeping_time;
+            release(&p->lock);
+            return result;
+        }
+        release(&p->lock);
+    }
+    return -1;
+}
+
+
+int
+get_creation_time(int pid){
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->pid == pid){
+            int result = p->startTick;
+            release(&p->lock);
+            return result;
+        }
+        release(&p->lock);
+    }
+    return -1;
+}
+

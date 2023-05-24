@@ -24,3 +24,8 @@
 #define SYS_getProcTick  23
 #define SYS_sysinfo   24
 #define SYS_switch_scheduler 25
+#define SYS_get_termination_time 26
+#define SYS_get_running_time 27
+#define SYS_get_ready_time 28
+#define SYS_get_sleeping_time 29
+#define SYS_get_creation_time 30

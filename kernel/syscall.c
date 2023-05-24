@@ -105,6 +105,11 @@ extern uint64 sys_hello(void);
 extern uint64 sys_getProcTick(void);
 extern uint64 sys_sysinfo(void);
 extern uint64 sys_switch_scheduler(void);
+extern uint64 sys_get_termination_time(void);
+extern uint64 sys_get_running_time(void);
+extern uint64 sys_get_ready_time(void);
+extern uint64 sys_get_sleeping_time(void);
+extern uint64 sys_get_creation_time(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -134,6 +139,12 @@ static uint64 (*syscalls[])(void) = {
 [SYS_getProcTick]   sys_getProcTick,
 [SYS_sysinfo]   sys_sysinfo,
 [SYS_switch_scheduler]   sys_switch_scheduler,
+[SYS_get_termination_time] sys_get_termination_time,
+[SYS_get_running_time] sys_get_running_time,
+[SYS_get_ready_time] sys_get_ready_time,
+[SYS_get_sleeping_time] sys_get_sleeping_time,
+[SYS_get_creation_time] sys_get_creation_time,
+
 };
 
 void
