@@ -332,7 +332,6 @@ fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
-  release(&np->lock);
   acquire(&tickslock);
   np->startTick = ticks;
   np->termination_time = 0;
@@ -340,6 +339,7 @@ fork(void)
   np->ready_time = 0;
   np->sleeping_time = 0;
   release(&tickslock);
+  release(&np->lock);
 
   return pid;
 }
