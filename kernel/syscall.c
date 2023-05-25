@@ -110,6 +110,7 @@ extern uint64 sys_get_running_time(void);
 extern uint64 sys_get_ready_time(void);
 extern uint64 sys_get_sleeping_time(void);
 extern uint64 sys_get_creation_time(void);
+extern uint64 sys_wait_pid(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -144,6 +145,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_get_ready_time] sys_get_ready_time,
 [SYS_get_sleeping_time] sys_get_sleeping_time,
 [SYS_get_creation_time] sys_get_creation_time,
+[SYS_wait_pid] sys_wait_pid,
 
 };
 

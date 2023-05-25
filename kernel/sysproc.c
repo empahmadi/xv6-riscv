@@ -148,3 +148,11 @@ int sys_get_creation_time(void){
     return get_creation_time(pid);
 }
 
+int sys_wait_pid(void){
+    uint64 p;
+    uint64 i;
+    argaddr(0, &p);
+    argaddr(1, &i);
+    return wait_pid(p, i);
+}
+

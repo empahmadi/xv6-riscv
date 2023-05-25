@@ -33,6 +33,7 @@ int get_running_time(int);
 int get_ready_time(int);
 int get_sleeping_time(int);
 int get_creation_time(int);
+int wait_pid(int*, int*);
 
 // ulib.c
 int stat(const char*, struct stat*);

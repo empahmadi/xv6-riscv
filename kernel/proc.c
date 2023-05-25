@@ -901,3 +901,66 @@ get_creation_time(int pid){
     return -1;
 }
 
+
+// Wait for a child process to exit and return its pid.
+// Return -1 if this process has no children.
+// fill an array with different times related to a process.
+int
+wait_pid(uint64 addr, uint64 info)
+{
+    struct proc *pp;
+    int havekids, pid;
+    struct proc *p = myproc();
+
+    acquire(&wait_lock);
+
+    for(;;){
+        // Scan through table looking for exited children.
+        havekids = 0;
+        for(pp = proc; pp < &proc[NPROC]; pp++){
+            if(pp->parent == p){
+                // make sure the child isn't still in exit() or swtch().
+                acquire(&pp->lock);
+
+                havekids = 1;
+                if(pp->state == ZOMBIE){
+                    // Found one.
+                    int times[5];
+                    pid = pp->pid;
+                    times[0] = pp->startTick;
+                    times[1] = pp->termination_time;
+                    times[2] = pp->running_time;
+                    times[3] = pp->ready_time;
+                    times[4] = pp->sleeping_time;
+                    if(copyout(p->pagetable,(uint64)info,(char*)&times,sizeof (times))<0){
+                        release(&pp->lock);
+                        release(&wait_lock);
+                        return -1;
+                    }
+                    if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
+                                            sizeof(pp->xstate)) < 0) {
+                        release(&pp->lock);
+                        release(&wait_lock);
+                        return -1;
+                    }
+                    freeproc(pp);
+                    release(&pp->lock);
+                    release(&wait_lock);
+                    return pid;
+                }
+                release(&pp->lock);
+            }
+        }
+
+        // No point waiting if we don't have any children.
+        if(!havekids || killed(p)){
+            release(&wait_lock);
+            return -1;
+        }
+
+        // Wait for a child to exit.
+        sleep(p, &wait_lock);  //DOC: wait-sleep
+    }
+}
+
+

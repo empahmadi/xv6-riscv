@@ -29,3 +29,4 @@
 #define SYS_get_ready_time 28
 #define SYS_get_sleeping_time 29
 #define SYS_get_creation_time 30
+#define SYS_wait_pid 31

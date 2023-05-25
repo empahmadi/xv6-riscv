@@ -45,3 +45,4 @@ entry("get_running_time");
 entry("get_ready_time");
 entry("get_sleeping_time");
 entry("get_creation_time");
+entry("wait_pid");
