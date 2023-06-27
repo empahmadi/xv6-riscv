@@ -66,6 +66,11 @@ void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
 uint64          free_memory();
+void            init_lock();
+void            increment_kref(void* );
+void            decrement_kref(void* );
+void            set_kref(void *, int );
+void            init_kref();
 
 // log.c
 void            initlog(int, struct superblock*);
@@ -161,6 +166,7 @@ void            trapinit(void);
 void            trapinithart(void);
 extern struct spinlock tickslock;
 void            usertrapret(void);
+int             page_fault_handler(pagetable_t , uint64 );
 
 // uart.c
 void            uartinit(void);
