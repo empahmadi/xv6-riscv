@@ -23,10 +23,22 @@ struct {
   struct run *freelist;
 } kmem;
 
+// PHYSTOP >> 12 is equal to memory size divided by
+// 2 ^ 12. this will say that how many pages of size
+// 2 ^ 12 (aka 4096 bites) do we have.
+struct{
+    struct spinlock lock;
+    int count[PHYSTOP >> 12];
+} kref;
+
+#define PA2PN(pa) (((uint64)pa) >> 12)
+
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  init_lock();
+  init_kref();
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -48,8 +60,20 @@ kfree(void *pa)
 {
   struct run *r;
 
-  if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
-    panic("kfree");
+  if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP) {
+      panic("kfree");
+  }
+
+    // checking if the references to a page were 0 or lesser,
+    // then free it otherwise do nothing.
+  acquire(&kref.lock);
+  decrement_kref(pa);
+  if (kref.count[PA2PN(pa)] > 0) {
+      release(&kref.lock);
+      return;
+  }
+  set_kref(pa, 0);
+  release(&kref.lock);
 
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
@@ -76,8 +100,13 @@ kalloc(void)
     kmem.freelist = r->next;
   release(&kmem.lock);
 
-  if(r)
-    memset((char*)r, 5, PGSIZE); // fill with junk
+  if(r) {
+      memset((char *) r, 5, PGSIZE); // fill with junk
+
+      acquire(&kref.lock);
+      set_kref((void*)r, 1);
+      release(&kref.lock);
+  }
   return (void*)r;
 }
 
@@ -95,4 +124,29 @@ free_memory(){
     }
     release(&kmem.lock);
     return free_memory;
+}
+
+void init_lock(){
+    initlock(&kref.lock, "kref");
+}
+
+void init_kref(){
+    acquire(&kref.lock);
+    for (int i = 0;i < (PHYSTOP >> 12);i++)
+        kref.count[i] = 0;
+    release(&kref.lock);
+}
+
+void increment_kref(void* pa){
+    acquire(&kref.lock);
+    kref.count[PA2PN(pa)]++;
+    release(&kref.lock);
+}
+
+void decrement_kref(void* pa){
+    kref.count[PA2PN(pa)]--;
+}
+
+void set_kref(void *pa, int number){
+    kref.count[PA2PN(pa)] = number;
 }
